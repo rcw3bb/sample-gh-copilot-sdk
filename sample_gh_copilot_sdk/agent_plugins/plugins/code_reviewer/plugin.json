@@ -1,0 +1,5 @@
+{
+  "name": "code-reviewer",
+  "description": "Provides a specialised code-review agent that audits files for quality, security, and style issues.",
+  "version": "0.1.0"
+}

@@ -1,0 +1,33 @@
+[project]
+name = "sample-gh-copilot-sdk"
+version = "0.1.0"
+description = "A sample GitHub Copilot SDK application using agent plugins is a small reference project that shows how to extend Copilot with custom agents and plugin-based capabilities so it can perform specialized tasks within a structured workflow."
+authors = [
+    {name = "Ron Webb"}
+]
+requires-python = ">=3.14"
+readme = "README.md"
+license = {file = "LICENSE"}
+dependencies = [
+    "logenrich (>=1.0.1,<2.0.0)",
+    "env-dir-bootstrap (>=1.0.0,<2.0.0)",
+    "github-copilot-sdk (>=1.0.6,<2.0.0)",
+    "pydantic (>=2.13.4,<3.0.0)"
+]
+
+
+[tool.poetry]
+packages = [{include = "sample_gh_copilot_sdk"}]
+include = ["sample_gh_copilot_sdk/logging.ini", "CHANGELOG.md"]
+
+[build-system]
+requires = ["poetry-core>=2.0.0,<3.0.0"]
+build-backend = "poetry.core.masonry.api"
+
+[dependency-groups]
+dev = [
+    "black (>=26.5.1,<27.0.0)",
+    "pylint (>=4.0.5,<5.0.0)",
+    "pytest (>=9.0.3,<10.0.0)",
+    "pytest-cov (>=7.1.0,<8.0.0)"
+]
