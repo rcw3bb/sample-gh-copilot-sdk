@@ -20,22 +20,36 @@ for configuration directory bootstrapping.
 - `sample_gh_copilot_sdk/` — main package
 - `sample_gh_copilot_sdk/__init__.py` — package init: version, env-dir-bootstrap setup, logenrich logger init
 - `sample_gh_copilot_sdk/logging.ini` — logging config bundled as a package resource
+- `sample_gh_copilot_sdk/_base_session.py` — `BaseSession` class: shared client lifecycle, content extraction, `__aexit__`, `run`; subclasses implement `_session_kwargs()`
+- `sample_gh_copilot_sdk/_chat_loop.py` — `run_chat_loop()` coroutine: shared interactive input/output loop used by all demo entry points
 - `sample_gh_copilot_sdk/agent_plugins/` — agent plugins demo sub-package (run: `python -m sample_gh_copilot_sdk.agent_plugins`)
 - `sample_gh_copilot_sdk/agent_plugins/__init__.py` — sub-package init; re-exports public symbols
 - `sample_gh_copilot_sdk/agent_plugins/__main__.py` — interactive chat loop entry point
 - `sample_gh_copilot_sdk/agent_plugins/agents.py` — `AgentConfig` TypedDict + researcher/editor config builders
 - `sample_gh_copilot_sdk/agent_plugins/hooks.py` — pre/post tool-use and session-start hook handlers + `build_hooks()`
-- `sample_gh_copilot_sdk/agent_plugins/session.py` — `AgentPluginSession` class: plugin-dir loading, custom agents, tools, hooks
-- `sample_gh_copilot_sdk/agent_plugins/tools.py` — `@define_tool` custom tools (`analyze_code`, `summarize_project`) + `get_tools()`
+- `sample_gh_copilot_sdk/agent_plugins/session.py` — `AgentPluginSession(BaseSession)`: plugin-dir loading, `_build_client`, `_session_kwargs`, `list_plugins`
+- `sample_gh_copilot_sdk/agent_plugins/tools.py` — `@define_tool` custom tools (`analyze_code`, `summarize_project`) + `build_review_tools()` + `get_tools()`
 - `sample_gh_copilot_sdk/agent_plugins/plugins/code_reviewer/` — bundled sample plugin directory
 - `sample_gh_copilot_sdk/agent_plugins/plugins/code_reviewer/plugin.json` — plugin manifest
 - `sample_gh_copilot_sdk/agent_plugins/plugins/code_reviewer/agents/code-reviewer.md` — code-reviewer agent definition
+- `sample_gh_copilot_sdk/code_reviewer/` — inline code-reviewer demo sub-package (run: `python -m sample_gh_copilot_sdk.code_reviewer`)
+- `sample_gh_copilot_sdk/code_reviewer/__init__.py` — sub-package init; re-exports public symbols
+- `sample_gh_copilot_sdk/code_reviewer/__main__.py` — interactive chat loop entry point
+- `sample_gh_copilot_sdk/code_reviewer/agent.py` — `build_code_reviewer_config()`: inline `AgentConfig` with embedded OWASP-aware review prompt
+- `sample_gh_copilot_sdk/code_reviewer/hooks.py` — session-start hook + `build_hooks()` (pre/post hooks shared from `agent_plugins`)
+- `sample_gh_copilot_sdk/code_reviewer/session.py` — `CodeReviewerSession(BaseSession)`: inline agent, no plugin dir, implements `_session_kwargs`
+- `sample_gh_copilot_sdk/code_reviewer/tools.py` — `get_tools()`: delegates to `build_review_tools()` for view/grep/glob
 - `tests/` — test suite (mirrors main package structure)
 - `tests/agent_plugins/` — tests for the agent_plugins sub-package
 - `tests/agent_plugins/test_agents.py` — tests for agents.py
 - `tests/agent_plugins/test_hooks.py` — tests for hooks.py
 - `tests/agent_plugins/test_session.py` — tests for session.py (uses mocked CopilotClient)
 - `tests/agent_plugins/test_tools.py` — tests for tools.py
+- `tests/code_reviewer/` — tests for the code_reviewer sub-package
+- `tests/code_reviewer/test_agent.py` — tests for agent.py
+- `tests/code_reviewer/test_hooks.py` — tests for hooks.py
+- `tests/code_reviewer/test_session.py` — tests for session.py (uses mocked CopilotClient)
+- `tests/code_reviewer/test_tools.py` — tests for tools.py
 - `.pylintrc` — Pylint configuration (10/10 enforced)
 - `pyproject.toml` — PEP 621 project metadata and Poetry configuration
 - `poetry.lock` — locked dependency versions (not ignored by git)

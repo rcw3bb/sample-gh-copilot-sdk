@@ -5,7 +5,9 @@
 
 > A Python reference application that shows how to extend GitHub Copilot with
 > custom agents, registered tools, session hooks, and plugin directories using
-> the `github-copilot-sdk`.
+> the `github-copilot-sdk`.  
+> Two self-contained demos are included: one that loads agents via a **plugin
+> directory**, and one that defines the agent **inline** in Python code.
 
 ## Prerequisites
 
@@ -31,19 +33,15 @@ poetry install
 
 ## Usage
 
-Start the interactive agent-plugins demo:
+### Demo 1 — Agent Plugins (plugin directory)
+
+Loads the bundled `code_reviewer` plugin via `--plugin-dir`, registers
+**researcher** and **editor** custom agents plus `analyze_code` /
+`summarize_project` custom tools:
 
 ```bash
 poetry run python -m sample_gh_copilot_sdk.agent_plugins
 ```
-
-The demo:
-
-1. Loads the bundled `code_reviewer` plugin directory via `--plugin-dir`.
-2. Registers two custom agents (**researcher** and **editor**) and two custom
-   tools (`analyze_code`, `summarize_project`).
-3. Opens an interactive chat loop — type a prompt and press **Enter**.  
-   Exit with **Ctrl+C** or **Ctrl+D**.
 
 ```
 ╔══════════════════════════════════════════════════════╗
@@ -58,38 +56,99 @@ You: Using the code-reviewer agent review the tools.py in this project.
 Assistant: …
 ```
 
+1. Loads the bundled `code_reviewer` plugin directory via `--plugin-dir`.
+2. Registers two custom agents (**researcher** and **editor**) and two custom
+   tools (`analyze_code`, `summarize_project`).
+3. Opens an interactive chat loop — type a prompt and press **Enter**.  
+   Exit with **Ctrl+C** or **Ctrl+D**.
+
+### Demo 2 — Inline Code Reviewer (no plugin directory)
+
+Defines the code-reviewer agent entirely in Python — no `.md` file or plugin
+directory required:
+
+```bash
+poetry run python -m sample_gh_copilot_sdk.code_reviewer
+```
+
+```
+╔══════════════════════════════════════════════════════╗
+║   GitHub Copilot — Code Reviewer Demo (Inline)       ║
+║   Agent:  code-reviewer (inline, no plugin dir)      ║
+║   Tools:  view · grep · glob                         ║
+╚══════════════════════════════════════════════════════╝
+Model  : gpt-5-mini
+
+You: Review the tools.py in this project.
+Assistant: …
+```
+
+1. Registers the **code-reviewer** agent with its prompt embedded directly in
+   `agent.py` (OWASP Top 10–aware review instructions).
+2. Exposes read-only tools only: `view`, `grep`, `glob`.
+3. Opens an interactive chat loop in the same way as Demo 1.
+
 ## Components / Architecture
 
 ```mermaid
 graph TD
-    Main["__main__.py\nInteractive chat loop"]
-    Session["AgentPluginSession\nsession.py"]
-    Client["CopilotClient\ngithub-copilot-sdk"]
-    Tools["get_tools()\nanalyze_code · summarize_project"]
-    Agents["build_agents_config()\nresearcher · editor"]
-    Hooks["build_hooks()\npre/post tool-use · session-start"]
-    Plugin["plugins/code_reviewer/\nplugin.json · agents/code-reviewer.md"]
-    Runtime["Copilot CLI Runtime\n(spawned subprocess)"]
+    subgraph Shared["Shared infrastructure"]
+        Base["_base_session.py\nBaseSession"]
+        Loop["_chat_loop.py\nrun_chat_loop()"]
+    end
 
-    Main -->|"async with"| Session
-    Session -->|"_build_client()"| Client
-    Session -->|"tools="| Tools
-    Session -->|"custom_agents="| Agents
-    Session -->|"hooks="| Hooks
-    Session -->|"--plugin-dir"| Plugin
-    Client -->|"stdio"| Runtime
+    subgraph AP["agent_plugins package"]
+        APMain["__main__.py"]
+        APSession["AgentPluginSession\nsession.py"]
+        APTools["get_tools()\nanalyze_code · summarize_project\n+ view · grep · glob"]
+        APAgents["build_agents_config()\nresearcher · editor"]
+        APHooks["build_hooks()"]
+        Plugin["plugins/code_reviewer/\nplugin.json · code-reviewer.md"]
+    end
+
+    subgraph CR["code_reviewer package"]
+        CRMain["__main__.py"]
+        CRSession["CodeReviewerSession\nsession.py"]
+        CRAgent["build_code_reviewer_config()\nagent.py — inline prompt"]
+        CRTools["get_tools()\nview · grep · glob"]
+        CRHooks["build_hooks()"]
+    end
+
+    Runtime["Copilot CLI Runtime\n(subprocess)"]
+
+    APMain -->|"await"| Loop
+    CRMain -->|"await"| Loop
+    Loop -->|"async with"| APSession
+    Loop -->|"async with"| CRSession
+    APSession -->|"extends"| Base
+    CRSession -->|"extends"| Base
+    Base -->|"CopilotClient()"| Runtime
+    APSession -->|"--plugin-dir"| Plugin
+    APSession -->|"tools="| APTools
+    APSession -->|"custom_agents="| APAgents
+    APSession -->|"hooks="| APHooks
+    CRSession -->|"tools="| CRTools
+    CRSession -->|"custom_agents="| CRAgent
+    CRSession -->|"hooks="| CRHooks
 ```
 
 ### Module overview
 
 | Module | Responsibility |
 |---|---|
-| `agent_plugins/__main__.py` | Interactive chat entry point (`python -m …`) |
-| `agent_plugins/session.py` | `AgentPluginSession` — async context manager wiring all extensions |
-| `agent_plugins/tools.py` | `@define_tool` definitions with Pydantic parameter models |
-| `agent_plugins/agents.py` | `AgentConfig` TypedDict + researcher / editor builder functions |
+| `_base_session.py` | `BaseSession` — shared client lifecycle, content extraction, `run()` |
+| `_chat_loop.py` | `run_chat_loop()` — shared interactive input/output loop |
+| `agent_plugins/__main__.py` | Entry point for Demo 1 (`python -m …`) |
+| `agent_plugins/session.py` | `AgentPluginSession(BaseSession)` — plugin-dir support, `_session_kwargs` |
+| `agent_plugins/tools.py` | `build_review_tools()` + `analyze_code` / `summarize_project` tools |
+| `agent_plugins/agents.py` | `AgentConfig` TypedDict + researcher / editor config builders |
 | `agent_plugins/hooks.py` | Pre/post tool-use and session-start hook handlers |
-| `agent_plugins/plugins/code_reviewer/` | Bundled plugin directory (manifest + agent definition) |
+| `agent_plugins/plugins/code_reviewer/` | Bundled plugin directory (manifest + agent `.md`) |
+| `code_reviewer/__main__.py` | Entry point for Demo 2 (`python -m …`) |
+| `code_reviewer/session.py` | `CodeReviewerSession(BaseSession)` — inline agent, `_session_kwargs` |
+| `code_reviewer/agent.py` | `build_code_reviewer_config()` — OWASP-aware prompt embedded in Python |
+| `code_reviewer/tools.py` | `get_tools()` — delegates to `build_review_tools()` for view/grep/glob |
+| `code_reviewer/hooks.py` | Session-start hook; reuses pre/post handlers from `agent_plugins` |
 
 ## Configuration
 

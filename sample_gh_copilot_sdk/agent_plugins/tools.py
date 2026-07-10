@@ -216,6 +216,41 @@ async def _glob_impl(params: GlobParams) -> str:
     return "\n".join(matches) if matches else "No files matched."
 
 
+def build_review_tools() -> list[Any]:
+    """Create and return the read-only ``view``, ``grep``, and ``glob`` tool instances.
+
+    Shared by :mod:`sample_gh_copilot_sdk.agent_plugins` and
+    :mod:`sample_gh_copilot_sdk.code_reviewer` so the tool definitions live in
+    one place.  Each call produces fresh tool objects.
+
+    :return: A list containing the ``view``, ``grep``, and ``glob`` tools.
+    :author: Ron Webb
+    :since: 0.1.0
+    """
+    view_tool = define_tool(
+        name="view",
+        description="Read a file and return its content with line numbers.",
+        overrides_built_in_tool=True,
+        skip_permission=True,
+    )(_view_impl)
+
+    grep_tool = define_tool(
+        name="grep",
+        description="Search files for lines matching a regular expression.",
+        overrides_built_in_tool=True,
+        skip_permission=True,
+    )(_grep_impl)
+
+    glob_tool = define_tool(
+        name="glob",
+        description="List files matching a glob pattern under a root directory.",
+        overrides_built_in_tool=True,
+        skip_permission=True,
+    )(_glob_impl)
+
+    return [view_tool, grep_tool, glob_tool]
+
+
 def get_tools() -> list[Any]:
     """Create and return the list of SDK tool instances for session registration.
 
@@ -238,25 +273,4 @@ def get_tools() -> list[Any]:
         skip_permission=True,
     )(_summarize_project_impl)
 
-    view_tool = define_tool(
-        name="view",
-        description="Read a file and return its content with line numbers.",
-        overrides_built_in_tool=True,
-        skip_permission=True,
-    )(_view_impl)
-
-    grep_tool = define_tool(
-        name="grep",
-        description="Search files for lines matching a regular expression.",
-        overrides_built_in_tool=True,
-        skip_permission=True,
-    )(_grep_impl)
-
-    glob_tool = define_tool(
-        name="glob",
-        description="List files matching a glob pattern under a root directory.",
-        overrides_built_in_tool=True,
-        skip_permission=True,
-    )(_glob_impl)
-
-    return [analyze_code, summarize_project, view_tool, grep_tool, glob_tool]
+    return [analyze_code, summarize_project] + build_review_tools()

@@ -16,6 +16,7 @@ by the GitHub Copilot SDK.  Press **Ctrl+C** or **Ctrl+D** (EOF) to exit.
 import asyncio
 import pathlib
 
+from sample_gh_copilot_sdk._chat_loop import run_chat_loop
 from sample_gh_copilot_sdk.agent_plugins.session import AgentPluginSession
 
 _BANNER = """\
@@ -35,7 +36,9 @@ async def main() -> None:
 
     Resolves the bundled ``code_reviewer`` plugin directory relative to this
     file, creates an :class:`~sample_gh_copilot_sdk.agent_plugins.AgentPluginSession`
-    with that plugin loaded, then loops until the user signals EOF or interrupt.
+    with that plugin loaded, then delegates to
+    :func:`~sample_gh_copilot_sdk._chat_loop.run_chat_loop` until the user
+    signals EOF or interrupt.
 
     :author: Ron Webb
     :since: 0.1.0
@@ -45,22 +48,9 @@ async def main() -> None:
     timeout = 600.0
 
     print(_BANNER.format(plugin=plugin_path, model=model))
-
-    async with AgentPluginSession(
-        plugin_dirs=[str(plugin_path)], model=model, timeout=timeout
-    ) as agent_session:
-        while True:
-            try:
-                user_input = input("You: ").strip()
-            except EOFError:
-                break
-            if not user_input:
-                continue
-            print()
-            response = await agent_session.run(user_input)
-            print(f"Assistant: {response}\n")
-
-    print("Session closed.")
+    await run_chat_loop(
+        AgentPluginSession(plugin_dirs=[str(plugin_path)], model=model, timeout=timeout)
+    )
 
 
 if __name__ == "__main__":
